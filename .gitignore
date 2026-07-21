@@ -1,0 +1,15 @@
+# Ignore application configuration, logs, and temporary files.
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+
+# Ignore master key for decrypting credentials and more.
+/config/master.key
+
+# Ignore storage
+/storage/*
+!/storage/.keep
+
+# Ignore bootsnap cache
+/tmp/cache/bootsnap*

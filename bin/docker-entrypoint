@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+# Remove a potentially pre-existing server.pid for Rails.
+rm -f /rails/tmp/pids/server.pid
+
+# Wait for PostgreSQL database to be ready
+echo "Waiting for PostgreSQL to start..."
+until pg_isready -h db -p 5432 -U postgres; do
+  sleep 1
+done
+echo "PostgreSQL is up and running."
+
+# Prepare database (create if not exist, run migrations, and run seed data automatically)
+echo "Preparing database (db:prepare & db:seed)..."
+bundle exec rails db:prepare
+bundle exec rails db:seed
+
+echo "Database ready. Starting Rails app..."
+exec "$@"

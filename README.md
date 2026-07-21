@@ -118,6 +118,13 @@ curl -X POST http://localhost:3000/events/1/bookings \
 }
 ```
 
+> **Note**: หากกรณี `curl` สั่งไปที่ `:event_id` ที่ไม่มีในระบบ (เช่น ยิงไปที่ id 1 แต่ใน DB เริ่มที่ id 4) API จะคืนค่า `422 Unprocessable Entity` พร้อมข้อความ `{"error": "Event does not exist"}`
+
+---
+
+## 3. Postman Collection
+สามารถนำไฟล์ `postman_collection.json` ที่แนบมาในโปรเจกต์นี้ Import เข้าสู่โปรแกรม Postman เพื่อทดสอบ API ได้ทันที โดยมีตัวอย่าง Request และ Response (Saved Examples) ครบทุก Endpoint (ทั้งกรณี Success และ Error)
+
 ---
 
 ## 3. เหตุผลในการแยก Service Layer ออกจาก Controller / Model

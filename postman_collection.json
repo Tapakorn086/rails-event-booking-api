@@ -1,0 +1,206 @@
+{
+	"info": {
+		"_postman_id": "e89c4172-1234-4567-8901-eventbooking",
+		"name": "Event Booking API",
+		"description": "Postman collection for testing Event Booking API endpoints built with Ruby on Rails according to Clean Architecture guidelines.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Events",
+			"item": [
+				{
+					"name": "GET /events (List all events)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"events"
+							]
+						},
+						"description": "Fetch all events along with available tickets count."
+					},
+					"response": [
+						{
+							"name": "Success Example",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/events",
+									"host": ["{{base_url}}"],
+									"path": ["events"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"cookie": [],
+							"body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Coldplay Music of the Spheres World Tour\",\n    \"date\": \"2026-08-21T06:45:00.000Z\",\n    \"available_tickets\": 100\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Taylor Swift The Eras Tour\",\n    \"date\": \"2026-09-21T06:45:00.000Z\",\n    \"available_tickets\": 50\n  }\n]"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Bookings",
+			"item": [
+				{
+					"name": "POST /events/:event_id/bookings (Success case)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/events/1/bookings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"events",
+								"1",
+								"bookings"
+							]
+						},
+						"description": "Successfully create a booking when requested tickets are available."
+					},
+					"response": [
+						{
+							"name": "201 Created Example",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/events/1/bookings",
+									"host": ["{{base_url}}"],
+									"path": ["events", "1", "bookings"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"id\": 1,\n  \"event_id\": 1,\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2,\n  \"created_at\": \"2026-07-21T06:50:00.000Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "POST /events/:event_id/bookings (Insufficient tickets error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"buyer@example.com\",\n  \"quantity\": 999\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/events/1/bookings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"events",
+								"1",
+								"bookings"
+							]
+						},
+						"description": "Rejected with HTTP 422 when requesting more tickets than available capacity."
+					},
+					"response": [
+						{
+							"name": "422 Unprocessable Entity Example",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"buyer@example.com\",\n  \"quantity\": 999\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/events/1/bookings",
+									"host": ["{{base_url}}"],
+									"path": ["events", "1", "bookings"]
+								}
+							},
+							"status": "Unprocessable Entity",
+							"code": 422,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"error\": \"Not enough tickets available. Remaining tickets: 100\"\n}"
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}

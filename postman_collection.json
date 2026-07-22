@@ -1,206 +1,494 @@
 {
-	"info": {
-		"_postman_id": "e89c4172-1234-4567-8901-eventbooking",
-		"name": "Event Booking API",
-		"description": "Postman collection for testing Event Booking API endpoints built with Ruby on Rails according to Clean Architecture guidelines.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "Events",
-			"item": [
-				{
-					"name": "GET /events (List all events)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/events",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"events"
-							]
-						},
-						"description": "Fetch all events along with available tickets count."
-					},
-					"response": [
-						{
-							"name": "Success Example",
-							"originalRequest": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/events",
-									"host": ["{{base_url}}"],
-									"path": ["events"]
-								}
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								}
-							],
-							"cookie": [],
-							"body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Coldplay Music of the Spheres World Tour\",\n    \"date\": \"2026-08-21T06:45:00.000Z\",\n    \"available_tickets\": 100\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Taylor Swift The Eras Tour\",\n    \"date\": \"2026-09-21T06:45:00.000Z\",\n    \"available_tickets\": 50\n  }\n]"
-						}
-					]
-				}
-			]
-		},
-		{
-			"name": "Bookings",
-			"item": [
-				{
-					"name": "POST /events/:event_id/bookings (Success case)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Accept",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/events/1/bookings",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"events",
-								"1",
-								"bookings"
-							]
-						},
-						"description": "Successfully create a booking when requested tickets are available."
-					},
-					"response": [
-						{
-							"name": "201 Created Example",
-							"originalRequest": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2\n}"
-								},
-								"url": {
-									"raw": "{{base_url}}/events/1/bookings",
-									"host": ["{{base_url}}"],
-									"path": ["events", "1", "bookings"]
-								}
-							},
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								}
-							],
-							"cookie": [],
-							"body": "{\n  \"id\": 1,\n  \"event_id\": 1,\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2,\n  \"created_at\": \"2026-07-21T06:50:00.000Z\"\n}"
-						}
-					]
-				},
-				{
-					"name": "POST /events/:event_id/bookings (Insufficient tickets error)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Accept",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"buyer@example.com\",\n  \"quantity\": 999\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/events/1/bookings",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"events",
-								"1",
-								"bookings"
-							]
-						},
-						"description": "Rejected with HTTP 422 when requesting more tickets than available capacity."
-					},
-					"response": [
-						{
-							"name": "422 Unprocessable Entity Example",
-							"originalRequest": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"email\": \"buyer@example.com\",\n  \"quantity\": 999\n}"
-								},
-								"url": {
-									"raw": "{{base_url}}/events/1/bookings",
-									"host": ["{{base_url}}"],
-									"path": ["events", "1", "bookings"]
-								}
-							},
-							"status": "Unprocessable Entity",
-							"code": 422,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								}
-							],
-							"cookie": [],
-							"body": "{\n  \"error\": \"Not enough tickets available. Remaining tickets: 100\"\n}"
-						}
-					]
-				}
-			]
-		}
-	],
-	"variable": [
-		{
-			"key": "base_url",
-			"value": "http://localhost:3000",
-			"type": "string"
-		}
-	]
+  "info": {
+    "_postman_id": "e89c4172-1234-4567-8901-eventbooking",
+    "name": "Event Booking API",
+    "description": "Postman collection for testing Event Booking API endpoints built with Ruby on Rails according to Clean Architecture guidelines.\n\n## How to use\n1. Import this file into Postman\n2. Set the `base_url` variable (default: http://localhost:3000)\n3. Run the server: `docker compose up --build`\n4. Use **Collection Runner** for concurrent tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "event_id",
+      "value": "3",
+      "type": "string",
+      "description": "ID of the low-capacity event (Jazz at the River, capacity=50)"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Events",
+      "item": [
+        {
+          "name": "GET /events — List all events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.be.an('array');",
+                  "  pm.expect(json[0]).to.have.keys(['id','name','date','available_tickets']);",
+                  "});",
+                  "// Save first event id for later requests",
+                  "const events = pm.response.json();",
+                  "if (events.length > 0) {",
+                  "  pm.collectionVariables.set('event_id', events[events.length - 1].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": ["{{base_url}}"],
+              "path": ["events"]
+            },
+            "description": "Fetch all events with real-time available_tickets."
+          },
+          "response": [
+            {
+              "name": "200 OK — Events list",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{base_url}}/events", "host": ["{{base_url}}"], "path": ["events"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Wonderframe Music Festival 2024\",\n    \"date\": \"2024-08-21T00:00:00Z\",\n    \"available_tickets\": 500\n  },\n  {\n    \"id\": 2,\n    \"name\": \"BNK48 Special Concert\",\n    \"date\": \"2024-09-21T00:00:00Z\",\n    \"available_tickets\": 1000\n  },\n  {\n    \"id\": 3,\n    \"name\": \"Jazz at the River\",\n    \"date\": \"2024-10-21T00:00:00Z\",\n    \"available_tickets\": 50\n  }\n]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Bookings — Normal Cases",
+      "item": [
+        {
+          "name": "POST booking — Success (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Has booking keys', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.keys(['id','event_id','email','quantity','created_at']);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"email\": \"customer@example.com\",\n    \"quantity\": 2\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "bookings"]
+            },
+            "description": "Successfully create a booking when tickets are available."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"event_id\": 3,\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2,\n  \"created_at\": \"2024-07-21T06:50:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST booking — Not Enough Tickets (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Has error message about tickets', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error).to.include('ticket');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"email\": \"buyer@example.com\",\n    \"quantity\": 9999\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "bookings"]
+            },
+            "description": "Rejected when requesting more tickets than available."
+          },
+          "response": [
+            {
+              "name": "422 Unprocessable Entity",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"Only 50 ticket(s) remaining; you requested 9999.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST booking — Invalid Email (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Has email validation error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.toLowerCase()).to.include('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"email\": \"not-a-valid-email\",\n    \"quantity\": 1\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "bookings"]
+            },
+            "description": "Rejected when email format is invalid."
+          },
+          "response": [
+            {
+              "name": "422 Invalid Email",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"Email must be a valid email address\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST booking — Event Not Found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"email\": \"buyer@example.com\",\n    \"quantity\": 1\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/999999/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["events", "999999", "bookings"]
+            },
+            "description": "Returns 404 when event ID does not exist."
+          },
+          "response": [
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"Couldn't find Event with 'id'=999999\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Concurrency — Race Condition Test",
+      "description": "## วิธีทดสอบ Race Condition ใน Postman\n\n### ขั้นตอน:\n1. รัน **GET /events** ก่อน เพื่อดู event_id ของ 'Jazz at the River' (capacity=50)\n2. รัน **[SETUP] Reset event via new booking check** เพื่อตรวจสอบ capacity\n3. เปิด **Collection Runner** (▶ Run)\n4. เลือก folder นี้ → **Iterations: 1**\n5. ติ๊ก **Run in parallel** (ถ้ามี Postman Pro/Team)\n6. กด **Run** และสังเกต: คนหนึ่งได้ 201, อีกคนได้ 422\n\n### หรือทดสอบแบบ manual:\n- เปิด request 'Alice books last 50' และ 'Bob books last 50' คนละ tab\n- กด Send ทั้งสองพร้อมกันให้เร็วที่สุด",
+      "item": [
+        {
+          "name": "[STEP 1] Check available tickets before race",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const events = pm.response.json();",
+                  "const jazzEvent = events.find(e => e.name && e.name.includes('Jazz'));",
+                  "",
+                  "if (jazzEvent) {",
+                  "  pm.collectionVariables.set('race_event_id', jazzEvent.id);",
+                  "  console.log('🎫 Jazz at the River — available tickets:', jazzEvent.available_tickets);",
+                  "  pm.test('Jazz event has tickets available', () => {",
+                  "    pm.expect(jazzEvent.available_tickets).to.be.above(0);",
+                  "  });",
+                  "} else {",
+                  "  console.warn('⚠️ Jazz at the River not found. Run db:seed first.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": ["{{base_url}}"],
+              "path": ["events"]
+            },
+            "description": "ดูจำนวนตั๋วก่อนทดสอบ — บันทึก event_id ของ 'Jazz at the River' ไว้ใน variable"
+          }
+        },
+        {
+          "name": "[STEP 2] Alice books ALL remaining tickets",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// ใช้ race_event_id ที่ได้จาก STEP 1",
+                  "// ถ้าไม่มีให้ใช้ event_id default",
+                  "const raceId = pm.collectionVariables.get('race_event_id') || pm.collectionVariables.get('event_id');",
+                  "pm.variables.set('current_race_event_id', raceId);",
+                  "console.log('🏃 Alice is booking event ID:', raceId);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const status = pm.response.status;",
+                  "const json = pm.response.json();",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "  pm.test('✅ Alice got the tickets! (201 Created)', () => true);",
+                  "  console.log('Alice WON — booked', json.quantity, 'tickets');",
+                  "} else {",
+                  "  pm.test('❌ Alice was rejected (' + pm.response.code + ')', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 422]);",
+                  "  });",
+                  "  console.log('Alice LOST —', json.error);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"email\": \"alice@example.com\",\n    \"quantity\": 50\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{race_event_id}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{race_event_id}}", "bookings"]
+            },
+            "description": "Alice พยายามจองตั๋ว 50 ใบ (ทั้งหมดที่มี)\n\n**เปิด Tab นี้คู่กับ Bob แล้วกด Send พร้อมกัน!**"
+          },
+          "response": [
+            {
+              "name": "201 — Alice wins",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"id\": 10,\n  \"event_id\": 3,\n  \"email\": \"alice@example.com\",\n  \"quantity\": 50,\n  \"created_at\": \"2024-07-21T10:00:00Z\"\n}"
+            },
+            {
+              "name": "422 — Alice loses (Bob was faster)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"This event is sold out.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[STEP 2] Bob books ALL remaining tickets (Race vs Alice)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const raceId = pm.collectionVariables.get('race_event_id') || pm.collectionVariables.get('event_id');",
+                  "pm.variables.set('current_race_event_id', raceId);",
+                  "console.log('🏃 Bob is booking event ID:', raceId);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "  pm.test('✅ Bob got the tickets! (201 Created)', () => true);",
+                  "  console.log('Bob WON — booked', json.quantity, 'tickets');",
+                  "} else {",
+                  "  pm.test('❌ Bob was rejected — pessimistic lock protected the event (' + pm.response.code + ')', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 422]);",
+                  "  });",
+                  "  console.log('Bob LOST —', json.error);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"email\": \"bob@example.com\",\n    \"quantity\": 50\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{race_event_id}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{race_event_id}}", "bookings"]
+            },
+            "description": "Bob พยายามจองตั๋ว 50 ใบพร้อมกับ Alice\n\n**เปิด Tab นี้คู่กับ Alice แล้วกด Send พร้อมกัน!**\n\nเนื่องจาก `with_lock` (pessimistic locking) คนหนึ่งจะได้ 201 อีกคนจะได้ 422 เสมอ — ไม่มี double booking"
+          },
+          "response": [
+            {
+              "name": "201 — Bob wins",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"id\": 11,\n  \"event_id\": 3,\n  \"email\": \"bob@example.com\",\n  \"quantity\": 50,\n  \"created_at\": \"2024-07-21T10:00:00Z\"\n}"
+            },
+            {
+              "name": "422 — Bob loses (Alice was faster)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"This event is sold out.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[STEP 3] Verify — Only 1 booking should exist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const events = pm.response.json();",
+                  "const raceId = parseInt(pm.collectionVariables.get('race_event_id'));",
+                  "const raceEvent = events.find(e => e.id === raceId);",
+                  "",
+                  "if (raceEvent) {",
+                  "  console.log('After race — available_tickets:', raceEvent.available_tickets);",
+                  "  pm.test('🔒 Pessimistic lock worked — event is now sold out (0 available)', () => {",
+                  "    pm.expect(raceEvent.available_tickets).to.eq(0);",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": ["{{base_url}}"],
+              "path": ["events"]
+            },
+            "description": "ตรวจสอบหลัง race — available_tickets ต้องเป็น 0 (ไม่ใช่ -50 หรือ -100)"
+          }
+        }
+      ]
+    }
+  ]
 }

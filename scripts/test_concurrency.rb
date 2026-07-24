@@ -51,7 +51,7 @@ threads = [
     result = {
       label:    buyer[:label],
       status:   response.code,
-      body:     JSON.parse(response.body) rescue response.body,
+      body:     (JSON.parse(response.body) rescue response.body),
       elapsed:  elapsed
     }
 

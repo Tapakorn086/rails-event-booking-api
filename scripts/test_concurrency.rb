@@ -3,26 +3,48 @@
 
 # scripts/test_concurrency.rb
 #
-# จำลองสองคนจองตั๋วใบสุดท้ายพร้อมกันผ่าน HTTP
-# รัน: ruby scripts/test_concurrency.rb
+# Simulates two buyers racing to book the last available tickets simultaneously.
 #
-# ต้องการ: rails server ทำงานอยู่ที่ localhost:3000
-#          และมี event ที่ id=3 (Jazz at the River, capacity=50)
+# Usage:
+#   podman exec -it rails_test-web-1 ruby scripts/test_concurrency.rb
+#
 
 require "net/http"
 require "json"
 require "uri"
 
-BASE_URL   = "http://localhost:3000"
-# ใช้ event ที่ 3 (Jazz at the River) ซึ่งมี capacity=50
-# ถ้าต้องการทดสอบ race condition ให้แน่ชัด ควรสร้าง event ใหม่ที่มี capacity=1
-EVENT_ID   = ENV.fetch("EVENT_ID", "3")
-QUANTITY   = ENV.fetch("QUANTITY", "50").to_i  # จองทั้งหมดพร้อมกัน
+BASE_URL = "http://localhost:3000"
+
+def fetch_events
+  uri  = URI("#{BASE_URL}/events")
+  resp = Net::HTTP.get_response(uri)
+  JSON.parse(resp.body)
+rescue => e
+  abort "❌ Connection failed: #{e.message}\n   Verify that the server is running at #{BASE_URL}"
+end
+
+events = fetch_events
+if events.empty?
+  abort "❌ No events found in database. Please run db:seed first."
+end
+
+# Pick the event with the smallest available tickets (> 0)
+event = events.select { |e| e["available_tickets"] > 0 }
+              .min_by { |e| e["available_tickets"] }
+
+if event.nil?
+  abort "❌ All events are sold out. Reset DB with db:seed."
+end
+
+event_id = event["id"]
+available_tickets = event["available_tickets"]
 
 puts "=" * 60
-puts "Concurrency Test: Two buyers racing for the last ticket"
-puts "Event ID : #{EVENT_ID}"
-puts "Quantity : #{QUANTITY} each (total capacity should be #{QUANTITY})"
+puts "Concurrency Test: Two buyers racing for the last tickets"
+puts "Event      : #{event['name']}"
+puts "Event ID   : #{event_id}"
+puts "Available  : #{available_tickets} tickets"
+puts "Quantity   : #{available_tickets} each"
 puts "=" * 60
 puts
 
@@ -45,7 +67,7 @@ threads = [
 ].map do |buyer|
   Thread.new do
     start_at = Time.now
-    response = post_booking(EVENT_ID, buyer[:email], QUANTITY)
+    response = post_booking(event_id, buyer[:email], available_tickets)
     elapsed  = (Time.now - start_at).round(3)
 
     result = {

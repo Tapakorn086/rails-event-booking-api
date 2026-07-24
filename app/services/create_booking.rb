@@ -1,42 +1,59 @@
-# Use Case Service Object responsible for creating a concert ticket booking.
+# frozen_string_literal: true
+
+# Use case: Create a booking for an event.
 #
-# ARCHITECTURAL DECISION:
-# Pessimistic Locking (`event.with_lock`) is used to prevent overbooking / race conditions when multiple
-# requests attempt to book the last remaining tickets simultaneously.
-# Locking the event row issuing `SELECT ... FOR UPDATE` ensures serialized access to ticket availability check
-# and booking creation within a DB transaction.
+# Architecture notes:
+#   - Lives in the Service layer; knows nothing about HTTP, params, or controllers.
+#   - Receives already-cast arguments via constructor (dependency injection pattern).
+#   - Returns a Result value object so callers never need to rescue exceptions.
+#
+# ARCHITECTURAL DECISION — Pessimistic Locking:
+#   event.with_lock issues SELECT ... FOR UPDATE, serialising access so that two
+#   concurrent requests cannot both pass the availability check for the same seat.
+#   Optimistic locking would raise StaleObjectError on the second writer, requiring
+#   a retry loop that still ends in failure — extra roundtrips, worse UX.
 class CreateBooking
+  # Immutable value object returned by #call.
+  Result = Struct.new(:success?, :booking, :error_message, keyword_init: true)
+
   def initialize(event:, email:, quantity:)
-    @event = event
-    @email = email
+    @event    = event
+    @email    = email
     @quantity = quantity
   end
 
   def call
-    return ServiceResult.new(success: false, error_message: "Event does not exist") if @event.nil?
-
-    # Wrap concurrency-sensitive check + insertion within a pessimistic row-level lock
     @event.with_lock do
-      available = @event.available_tickets
-
-      if available < @quantity
-        return ServiceResult.new(
-          success: false,
-          error_message: "Not enough tickets available. Remaining tickets: #{available}"
-        )
-      end
+      return insufficient_tickets_result if tickets_insufficient?
 
       booking = @event.bookings.build(email: @email, quantity: @quantity)
 
       if booking.save
-        ServiceResult.new(success: true, booking: booking)
+        Result.new(success?: true, booking: booking, error_message: nil)
       else
-        ServiceResult.new(
-          success: false,
-          error_message: booking.errors.full_messages.join(", "),
-          errors: booking.errors.full_messages
+        Result.new(
+          success?:      false,
+          booking:       nil,
+          error_message: booking.errors.full_messages.to_sentence
         )
       end
     end
+  end
+
+  private
+
+  def tickets_insufficient?
+    @event.available_tickets < @quantity
+  end
+
+  def insufficient_tickets_result
+    available = @event.available_tickets
+    message   = if available.zero?
+                  "This event is sold out."
+                else
+                  "Only #{available} ticket(s) remaining; you requested #{@quantity}."
+                end
+
+    Result.new(success?: false, booking: nil, error_message: message)
   end
 end

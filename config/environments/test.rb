@@ -50,4 +50,7 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # Allow example.com hosts in tests to bypass Host Authorization middleware
+  config.hosts << "www.example.com"
 end

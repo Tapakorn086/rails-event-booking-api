@@ -6,6 +6,6 @@ class Event < ApplicationRecord
   validates :capacity, presence: true, numericality: { greater_than: 0, only_integer: true }
 
   def available_tickets
-    capacity - bookings.sum(:quantity)
+    capacity - bookings.where(status: [:success, :pending]).sum(:quantity)
   end
 end

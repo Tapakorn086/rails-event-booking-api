@@ -2,17 +2,26 @@ class BookingsController < ApplicationController
   def create
     event = Event.find(params[:event_id])
 
-    result = CreateBooking.new(
-      event:    event,
-      email:    booking_params[:email],
-      quantity: booking_params[:quantity].to_i
-    ).call
+    # 1. Build and validate booking object instantly for basic validations (email, quantity format)
+    booking = event.bookings.build(booking_params)
+    booking.status = :pending
 
-    if result.success?
-      render json: BookingSerializer.new(result.booking).as_json, status: :created
+    if booking.save
+      # 2. Enqueue booking finalize processing async via Sidekiq
+      ProcessBookingJob.perform_later(booking.id)
+
+      # 3. Respond immediately with 202 Accepted and current pending status
+      render json: BookingSerializer.new(booking).as_json, status: :accepted
     else
-      render json: { error: result.error_message }, status: :unprocessable_entity
+      render json: { error: booking.errors.full_messages.to_sentence }, status: :unprocessable_entity
     end
+  end
+
+  def show
+    event = Event.find(params[:event_id])
+    booking = event.bookings.find(params[:id])
+
+    render json: BookingSerializer.new(booking).as_json, status: :ok
   end
 
   private

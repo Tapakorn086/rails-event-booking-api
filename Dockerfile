@@ -9,7 +9,9 @@ WORKDIR /rails
 
 # Install gems
 COPY Gemfile Gemfile.lock ./
-RUN bundle install
+# Limit bundler to 1 jobs to strictly avoid parallel compiling OOM (exit code 137)
+RUN bundle install --jobs 1 --retry 3
+
 
 # Copy application code
 COPY . .

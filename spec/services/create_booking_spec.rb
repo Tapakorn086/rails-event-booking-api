@@ -5,37 +5,27 @@ RSpec.describe CreateBooking, type: :service do
 
   describe '#call' do
     context 'when requested quantity is available and parameters are valid' do
-      it 'creates a booking and returns success result' do
-        service = CreateBooking.new(event: event, email: 'buyer@example.com', quantity: 2)
+      it 'processes a booking and returns success result' do
+        booking = create(:booking, event: event, email: 'buyer@example.com', quantity: 2, status: :pending)
+        service = CreateBooking.new(booking: booking)
         result = service.call
 
         expect(result).to be_success
         expect(result.booking).to be_persisted
-        expect(result.booking.email).to eq('buyer@example.com')
-        expect(result.booking.quantity).to eq(2)
+        expect(result.booking.status).to eq('success')
         expect(event.reload.available_tickets).to eq(8)
       end
     end
 
     context 'when requested quantity exceeds available tickets' do
-      it 'returns failure result without creating a booking' do
-        service = CreateBooking.new(event: event, email: 'buyer@example.com', quantity: 15)
+      it 'returns failure result and marks booking as failed' do
+        booking = create(:booking, event: event, email: 'buyer@example.com', quantity: 15, status: :pending)
+        service = CreateBooking.new(booking: booking)
         result = service.call
 
         expect(result).not_to be_success
-        expect(result.error_message).to include('Not enough tickets available')
-        expect(Booking.count).to eq(0)
-      end
-    end
-
-    context 'when validation fails (invalid email)' do
-      it 'returns failure result with validation error' do
-        service = CreateBooking.new(event: event, email: 'invalid-email', quantity: 1)
-        result = service.call
-
-        expect(result).not_to be_success
-        expect(result.error_message).to include('Email is invalid')
-        expect(Booking.count).to eq(0)
+        expect(result.error_message).to include('remaining') # "Only 10 ticket(s) remaining; you requested 15."
+        expect(booking.reload.status).to eq('failed')
       end
     end
 
@@ -46,13 +36,9 @@ RSpec.describe CreateBooking, type: :service do
 
         threads = 2.times.map do |i|
           Thread.new do
-            # Ensure fresh DB connection for each thread
             ActiveRecord::Base.connection_pool.with_connection do
-              service = CreateBooking.new(
-                event: single_ticket_event,
-                email: "user#{i}@example.com",
-                quantity: 1
-              )
+              booking = create(:booking, event: single_ticket_event, email: "user#{i}@example.com", quantity: 1, status: :pending)
+              service = CreateBooking.new(booking: booking)
               results << service.call
             end
           end
@@ -66,7 +52,7 @@ RSpec.describe CreateBooking, type: :service do
         expect(successes.count).to eq(1)
         expect(failures.count).to eq(1)
         expect(single_ticket_event.reload.available_tickets).to eq(0)
-        expect(Booking.where(event: single_ticket_event).count).to eq(1)
+        expect(Booking.where(event: single_ticket_event, status: :success).count).to eq(1)
       end
     end
   end

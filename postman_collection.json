@@ -2,43 +2,60 @@
   "info": {
     "_postman_id": "e89c4172-1234-4567-8901-eventbooking",
     "name": "Event Booking API",
-    "description": "Postman collection for testing Event Booking API endpoints built with Ruby on Rails according to Clean Architecture guidelines.\n\n## How to use\n1. Import this file into Postman\n2. Set the `base_url` variable (default: http://localhost:3000)\n3. Run the server: `docker compose up --build`\n4. Use **Collection Runner** for concurrent tests",
+    "description": "## Event Booking API — คู่มือทดสอบสำหรับ Technical Challenge\n\n### วิธีเริ่มต้น\n\n**1. รัน Server**\n```bash\ndocker compose up --build\n```\nรอจนเห็น `Listening on http://0.0.0.0:3000`\n\n**2. ตรวจสอบ Collection Variables**\nคลิก Collection → Variables → ตรวจสอบว่า `base_url = http://localhost:3000`\n\n**3. รัน Folder ตามลำดับ**\n> ⚠️ ต้องรัน Folder 1 ก่อนทุกครั้ง เพื่อให้ระบบบันทึก event_id จาก Database ให้อัตโนมัติ\n\n---\n\n### โครงสร้าง Collection (ตาม User Stories)\n\n| Folder | User Story / Requirement |\n|---|---|\n| **1. Setup** | ดึงรายการ Event — บันทึก event_id อัตโนมัติ |\n| **2. User Story 1** | เห็นรายการ Event พร้อม name, date, available_tickets |\n| **3. User Story 2 & 3** | จองตั๋ว (สำเร็จ / ถูกปฏิเสธ) |\n| **4. Inventory Tracking** | ยืนยันว่า available_tickets ลดลงหลังจอง |\n| **5. Concurrency** | ป้องกัน Overbooking เมื่อ 2 คนจองพร้อมกัน |\n\n---\n\n### รูปแบบ Request Body\n```json\n{\n  \"booking\": {\n    \"email\": \"your@email.com\",\n    \"quantity\": 2\n  }\n}\n```",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "base_url",
       "value": "http://localhost:3000",
-      "type": "string"
+      "type": "string",
+      "description": "URL ของ server — ไม่ต้องแก้หากรันด้วย docker compose"
     },
     {
       "key": "event_id",
-      "value": "3",
+      "value": "",
       "type": "string",
-      "description": "ID of the low-capacity event (Jazz at the River, capacity=50)"
+      "description": "บันทึกอัตโนมัติจาก Folder 1 — ไม่ต้องแก้เอง"
+    },
+    {
+      "key": "tickets_before_booking",
+      "value": "",
+      "type": "string",
+      "description": "บันทึกอัตโนมัติเพื่อใช้ verify ว่า available_tickets ลดลงจริง"
+    },
+    {
+      "key": "race_event_id",
+      "value": "",
+      "type": "string",
+      "description": "บันทึกอัตโนมัติจาก Folder 5 STEP 1 — ไม่ต้องแก้เอง"
     }
   ],
   "item": [
     {
-      "name": "1. Events",
+      "name": "1. Setup — GET /events (รัน Request นี้ก่อนเสมอ)",
+      "description": "รัน Request นี้เพื่อ:\n1. ตรวจสอบว่า server ทำงานปกติ\n2. ให้ระบบบันทึก `event_id` ที่ถูกต้องจาก Database ไว้ใช้ใน Folder อื่น\n\n> ⚠️ ID จริงใน Database อาจไม่ได้เริ่มที่ 1 เสมอไป ขึ้นอยู่กับจำนวนครั้งที่ seed",
       "item": [
         {
-          "name": "GET /events — List all events",
+          "name": "GET /events — Setup & Save event_id",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns array', () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json).to.be.an('array');",
-                  "  pm.expect(json[0]).to.have.keys(['id','name','date','available_tickets']);",
-                  "});",
-                  "// Save first event id for later requests",
+                  "pm.test('Server ทำงานปกติ (200 OK)', () => pm.response.to.have.status(200));",
+                  "",
                   "const events = pm.response.json();",
+                  "pm.test('ได้รับ Array ของ Events', () => pm.expect(events).to.be.an('array').with.length.above(0));",
+                  "",
                   "if (events.length > 0) {",
-                  "  pm.collectionVariables.set('event_id', events[events.length - 1].id);",
+                  "  // ใช้ event สุดท้าย (capacity น้อยสุด) เพื่อทดสอบ edge case ได้ดีกว่า",
+                  "  const lastEvent = events[events.length - 1];",
+                  "  pm.collectionVariables.set('event_id', lastEvent.id);",
+                  "  pm.collectionVariables.set('tickets_before_booking', lastEvent.available_tickets);",
+                  "  console.log('✅ Setup สำเร็จ');",
+                  "  console.log('📌 event_id ที่จะใช้ทดสอบ:', lastEvent.id, '(' + lastEvent.name + ')');",
+                  "  console.log('🎫 available_tickets ปัจจุบัน:', lastEvent.available_tickets);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -47,47 +64,162 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/events",
-              "host": ["{{base_url}}"],
-              "path": ["events"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events"
+              ]
             },
-            "description": "Fetch all events with real-time available_tickets."
+            "description": "ดึงรายการ Event ทั้งหมด และบันทึก `event_id` ไว้ใน Collection Variable อัตโนมัติ\n\nหลังรันแล้ว ตรวจ Console ว่าเห็น:\n- `✅ Setup สำเร็จ`\n- `📌 event_id ที่จะใช้ทดสอบ: <number>`"
           },
           "response": [
             {
               "name": "200 OK — Events list",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": { "raw": "{{base_url}}/events", "host": ["{{base_url}}"], "path": ["events"] }
-              },
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
-              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Wonderframe Music Festival 2024\",\n    \"date\": \"2024-08-21T00:00:00Z\",\n    \"available_tickets\": 500\n  },\n  {\n    \"id\": 2,\n    \"name\": \"BNK48 Special Concert\",\n    \"date\": \"2024-09-21T00:00:00Z\",\n    \"available_tickets\": 1000\n  },\n  {\n    \"id\": 3,\n    \"name\": \"Jazz at the River\",\n    \"date\": \"2024-10-21T00:00:00Z\",\n    \"available_tickets\": 50\n  }\n]"
+              "body": "[\n  { \"id\": 1, \"name\": \"Coldplay Music of the Spheres World Tour\", \"date\": \"2026-08-21T00:00:00Z\", \"available_tickets\": 100 },\n  { \"id\": 2, \"name\": \"Taylor Swift The Eras Tour\",               \"date\": \"2026-09-21T00:00:00Z\", \"available_tickets\": 50  },\n  { \"id\": 3, \"name\": \"Ed Sheeran +-=÷x Tour\",                    \"date\": \"2026-10-21T00:00:00Z\", \"available_tickets\": 5   }\n]"
             }
           ]
         }
       ]
     },
     {
-      "name": "2. Bookings — Normal Cases",
+      "name": "2. User Story 1 — ดูรายการ Event",
+      "description": "> **User Story 1**: As a user, I can see a list of all events including their **name**, **date**, and how many tickets are currently **available**.\n\nทดสอบว่า GET /events คืนข้อมูลครบตาม User Story",
       "item": [
         {
-          "name": "POST booking — Success (201)",
+          "name": "GET /events — ครบทุก field ที่ต้องการ",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Has booking keys', () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json).to.have.keys(['id','event_id','email','quantity','created_at']);",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const events = pm.response.json();",
+                  "",
+                  "pm.test('Response เป็น Array', () => {",
+                  "  pm.expect(events).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('มีมากกว่า 1 Event (multiple events)', () => {",
+                  "  pm.expect(events.length).to.be.above(1);",
+                  "});",
+                  "",
+                  "pm.test('แต่ละ Event มีครบ: id, name, date, available_tickets', () => {",
+                  "  events.forEach(event => {",
+                  "    pm.expect(event).to.have.all.keys('id', 'name', 'date', 'available_tickets');",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test('available_tickets เป็นตัวเลข >= 0', () => {",
+                  "  events.forEach(event => {",
+                  "    pm.expect(event.available_tickets).to.be.a('number').and.at.least(0);",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test('name เป็น string ไม่ว่าง', () => {",
+                  "  events.forEach(event => pm.expect(event.name).to.be.a('string').and.not.empty);",
+                  "});",
+                  "",
+                  "pm.test('date เป็น string (ISO format)', () => {",
+                  "  events.forEach(event => pm.expect(event.date).to.be.a('string').and.not.empty);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events"
+              ]
+            },
+            "description": "**User Story 1**: ดูรายการ Event ทั้งหมด\n\nTest ตรวจสอบว่า response มีครบทุก field ที่ User Story กำหนด:\n- `name` — ชื่อ Event\n- `date` — วันที่จัด\n- `available_tickets` — จำนวนตั๋วที่เหลือ (real-time)"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  { \"id\": 1, \"name\": \"Coldplay Music of the Spheres World Tour\", \"date\": \"2026-08-21T00:00:00Z\", \"available_tickets\": 100 },\n  { \"id\": 2, \"name\": \"Taylor Swift The Eras Tour\",               \"date\": \"2026-09-21T00:00:00Z\", \"available_tickets\": 50  },\n  { \"id\": 3, \"name\": \"Ed Sheeran +-=÷x Tour\",                    \"date\": \"2026-10-21T00:00:00Z\", \"available_tickets\": 5   }\n]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. User Story 2 & 3 — จองตั๋ว (สำเร็จ / ถูกปฏิเสธ)",
+      "description": "> **User Story 2**: As a user, I can reserve tickets by providing my **email** and **quantity**.\n> **User Story 3** (Requirement): The system should **reject** a booking if there are not enough tickets remaining.\n\nทดสอบทุก scenario ของการจองตั๋ว",
+      "item": [
+        {
+          "name": "POST booking — [US2] ได้รับคิวการจอง (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[US2] Status 202 Accepted', () => pm.response.to.have.status(202));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('us2_booking_id', json.id);",
+                  "",
+                  "pm.test('[US2] Response มี field ครบ: id, event_id, email, quantity, status, error_message, created_at', () => {",
+                  "  pm.expect(json).to.have.all.keys('id', 'event_id', 'email', 'quantity', 'status', 'error_message', 'created_at');",
+                  "});",
+                  "",
+                  "pm.test('[US2] email ใน response ตรงกับที่ส่งไป', () => {",
+                  "  pm.expect(json.email).to.equal('customer@example.com');",
+                  "});",
+                  "",
+                  "pm.test('[US2] quantity ใน response ตรงกับที่ส่งไป', () => {",
+                  "  pm.expect(json.quantity).to.equal(2);",
+                  "});",
+                  "",
+                  "pm.test('[US2] status ใน response เป็น pending', () => {",
+                  "  pm.expect(json.status).to.equal('pending');",
+                  "});",
+                  "",
+                  "pm.test('[US2] event_id ตรงกับ event ที่จอง', () => {",
+                  "  const eventId = parseInt(pm.collectionVariables.get('event_id'));",
+                  "  pm.expect(json.event_id).to.equal(eventId);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -97,20 +229,36 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"booking\": {\n    \"email\": \"customer@example.com\",\n    \"quantity\": 2\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/events/{{event_id}}/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["events", "{{event_id}}", "bookings"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{event_id}}",
+                "bookings"
+              ]
             },
-            "description": "Successfully create a booking when tickets are available."
+            "description": "**User Story 2**: จองตั๋ว 2 ใบโดยระบุ email และ quantity\n\n**คาดหวัง**: `202 Accepted` พร้อมสถานะ pending เพื่อนำไปตรวจสอบผลลัพธ์จริงในขั้นตอนถัดไป"
           },
           "response": [
             {
@@ -118,23 +266,78 @@
               "status": "Created",
               "code": 201,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
-              "body": "{\n  \"id\": 1,\n  \"event_id\": 3,\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2,\n  \"created_at\": \"2024-07-21T06:50:00.000Z\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"event_id\": 3,\n  \"email\": \"customer@example.com\",\n  \"quantity\": 2,\n  \"created_at\": \"2026-07-21T06:50:00.000Z\"\n}"
             }
           ]
         },
         {
-          "name": "POST booking — Not Enough Tickets (422)",
+          "name": "GET booking status — [US2] ตรวจสอบสถานะการจองสำเร็จ (success)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
-                  "pm.test('Has error message about tickets', () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.include('ticket');",
+                  "// รอให้ Sidekiq ทำงานซักครู่ หรือยิงได้ทันทีถ้าทำงานเร็ว",
+                  "pm.test('ดึงข้อมูลสำเร็จ (200 OK)', () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test('[US2] สถานะการจองเปลี่ยนเป็น success', () => {",
+                  "  pm.expect(json.status).to.equal('success');",
+                  "});",
+                  "",
+                  "pm.test('[US2] ไม่มี error_message', () => {",
+                  "  pm.expect(json.error_message).to.be.null;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/bookings/{{us2_booking_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{event_id}}",
+                "bookings",
+                "{{us2_booking_id}}"
+              ]
+            },
+            "description": "ตรวจสอบสถานะการจองหลังคิวประมวลผลเสร็จสิ้น (ควรเปลี่ยนจาก pending -> success)"
+          }
+        },
+        {
+          "name": "POST booking — [US3] ได้รับคิวการจองกรณีตั๋วไม่พอ (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[US3] Status 202 Accepted', () => pm.response.to.have.status(202));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('us3_booking_id', json.id);",
+                  "",
+                  "pm.test('[US3] status ใน response เป็น pending', () => {",
+                  "  pm.expect(json.status).to.equal('pending');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -144,42 +347,111 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"booking\": {\n    \"email\": \"buyer@example.com\",\n    \"quantity\": 9999\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/events/{{event_id}}/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["events", "{{event_id}}", "bookings"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{event_id}}",
+                "bookings"
+              ]
             },
-            "description": "Rejected when requesting more tickets than available."
+            "description": "**User Story 3**: จองตั๋วเกินจำนวน\n\n**คาดหวัง**: `202 Accepted` เนื่องจากคิวจะรับเรื่องไปตรวจหลังบ้าน"
           },
           "response": [
             {
-              "name": "422 Unprocessable Entity",
+              "name": "422 — ตั๋วไม่พอ",
               "status": "Unprocessable Entity",
               "code": 422,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
-              "body": "{\n  \"error\": \"Only 50 ticket(s) remaining; you requested 9999.\"\n}"
+              "body": "{\n  \"error\": \"Only 3 ticket(s) remaining; you requested 9999.\"\n}"
             }
           ]
         },
         {
-          "name": "POST booking — Invalid Email (422)",
+          "name": "GET booking status — [US3] ตรวจสอบสถานะการจองล้มเหลว (failed)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
-                  "pm.test('Has email validation error', () => {",
+                  "pm.test('ดึงข้อมูลสำเร็จ (200 OK)', () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test('[US3] สถานะการจองเปลี่ยนเป็น failed', () => {",
+                  "  pm.expect(json.status).to.equal('failed');",
+                  "});",
+                  "",
+                  "pm.test('[US3] มี error_message บอกว่าตั๋วไม่พอ', () => {",
+                  "  pm.expect(json.error_message).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.error_message.toLowerCase()).to.include('remaining');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/bookings/{{us3_booking_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{event_id}}",
+                "bookings",
+                "{{us3_booking_id}}"
+              ]
+            },
+            "description": "ตรวจสอบสถานะการจองหลังคิวประมวลผลเสร็จสิ้น (ควรเปลี่ยนจาก pending -> failed)"
+          }
+        },
+        {
+          "name": "POST booking — [Validation] Email ไม่ถูกรูปแบบ (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));",
+                  "",
+                  "pm.test('Error message เกี่ยวกับ email', () => {",
                   "  const json = pm.response.json();",
                   "  pm.expect(json.error.toLowerCase()).to.include('email');",
                   "});"
@@ -191,41 +463,67 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"booking\": {\n    \"email\": \"not-a-valid-email\",\n    \"quantity\": 1\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/events/{{event_id}}/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["events", "{{event_id}}", "bookings"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{event_id}}",
+                "bookings"
+              ]
             },
-            "description": "Rejected when email format is invalid."
+            "description": "Input validation: email ต้องถูกรูปแบบ\n\n**คาดหวัง**: `422` พร้อม error message เกี่ยวกับ email"
           },
           "response": [
             {
-              "name": "422 Invalid Email",
+              "name": "422 — Email ไม่ถูกรูปแบบ",
               "status": "Unprocessable Entity",
               "code": 422,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
-              "body": "{\n  \"error\": \"Email must be a valid email address\"\n}"
+              "body": "{\n  \"error\": \"Email is invalid\"\n}"
             }
           ]
         },
         {
-          "name": "POST booking — Event Not Found (404)",
+          "name": "POST booking — [Validation] Event ไม่มีในระบบ (404)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+                  "",
+                  "pm.test('มี error message', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('error');",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -234,20 +532,36 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"booking\": {\n    \"email\": \"buyer@example.com\",\n    \"quantity\": 1\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/events/999999/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["events", "999999", "bookings"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "999999",
+                "bookings"
+              ]
             },
-            "description": "Returns 404 when event ID does not exist."
+            "description": "จองตั๋วของ Event ที่ไม่มีในระบบ (id = 999999)\n\n**คาดหวัง**: `404 Not Found`"
           },
           "response": [
             {
@@ -255,38 +569,42 @@
               "status": "Not Found",
               "code": 404,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
-              "body": "{\n  \"error\": \"Couldn't find Event with 'id'=999999\"\n}"
+              "body": "{\n  \"error\": \"Event does not exist\"\n}"
             }
           ]
         }
       ]
     },
     {
-      "name": "3. Concurrency — Race Condition Test",
-      "description": "## วิธีทดสอบ Race Condition ใน Postman\n\n### ขั้นตอน:\n1. รัน **GET /events** ก่อน เพื่อดู event_id ของ 'Jazz at the River' (capacity=50)\n2. รัน **[SETUP] Reset event via new booking check** เพื่อตรวจสอบ capacity\n3. เปิด **Collection Runner** (▶ Run)\n4. เลือก folder นี้ → **Iterations: 1**\n5. ติ๊ก **Run in parallel** (ถ้ามี Postman Pro/Team)\n6. กด **Run** และสังเกต: คนหนึ่งได้ 201, อีกคนได้ 422\n\n### หรือทดสอบแบบ manual:\n- เปิด request 'Alice books last 50' และ 'Bob books last 50' คนละ tab\n- กด Send ทั้งสองพร้อมกันให้เร็วที่สุด",
+      "name": "4. Inventory Tracking — available_tickets ลดลงหลังจอง",
+      "description": "ทดสอบว่า **available_tickets ใน GET /events ลดลงจริง** หลังจากมีการจองตั๋ว\n\n**ขั้นตอน:**\n1. GET /events → บันทึก available_tickets ก่อนจอง\n2. POST booking → จองตั๋ว 1 ใบ\n3. GET /events → ตรวจสอบว่า available_tickets ลดลง 1 ใบ",
       "item": [
         {
-          "name": "[STEP 1] Check available tickets before race",
+          "name": "[STEP 1] GET /events — บันทึก available_tickets ก่อนจอง",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "",
                   "const events = pm.response.json();",
-                  "const jazzEvent = events.find(e => e.name && e.name.includes('Jazz'));",
+                  "const eventId = parseInt(pm.collectionVariables.get('event_id'));",
+                  "const targetEvent = events.find(e => e.id === eventId);",
                   "",
-                  "if (jazzEvent) {",
-                  "  pm.collectionVariables.set('race_event_id', jazzEvent.id);",
-                  "  console.log('🎫 Jazz at the River — available tickets:', jazzEvent.available_tickets);",
-                  "  pm.test('Jazz event has tickets available', () => {",
-                  "    pm.expect(jazzEvent.available_tickets).to.be.above(0);",
-                  "  });",
+                  "if (targetEvent) {",
+                  "  pm.collectionVariables.set('tickets_before_booking', targetEvent.available_tickets);",
+                  "  console.log('📊 available_tickets ก่อนจอง:', targetEvent.available_tickets);",
+                  "  console.log('📌 Event:', targetEvent.name);",
                   "} else {",
-                  "  console.warn('⚠️ Jazz at the River not found. Run db:seed first.');",
+                  "  console.warn('⚠️ ไม่พบ event — รัน Folder 1 ก่อน');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -295,47 +613,36 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/events",
-              "host": ["{{base_url}}"],
-              "path": ["events"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events"
+              ]
             },
-            "description": "ดูจำนวนตั๋วก่อนทดสอบ — บันทึก event_id ของ 'Jazz at the River' ไว้ใน variable"
+            "description": "ดึง available_tickets ก่อนจองเพื่อใช้เปรียบเทียบใน STEP 3"
           }
         },
         {
-          "name": "[STEP 2] Alice books ALL remaining tickets",
+          "name": "[STEP 2] POST booking — จองตั๋ว 1 ใบ",
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "// ใช้ race_event_id ที่ได้จาก STEP 1",
-                  "// ถ้าไม่มีให้ใช้ event_id default",
-                  "const raceId = pm.collectionVariables.get('race_event_id') || pm.collectionVariables.get('event_id');",
-                  "pm.variables.set('current_race_event_id', raceId);",
-                  "console.log('🏃 Alice is booking event ID:', raceId);"
-                ],
-                "type": "text/javascript"
-              }
-            },
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "const status = pm.response.status;",
-                  "const json = pm.response.json();",
+                  "pm.test('จองตั๋วเข้าคิวสำเร็จ (202 Accepted)', () => pm.response.to.have.status(202));",
                   "",
-                  "if (pm.response.code === 201) {",
-                  "  pm.test('✅ Alice got the tickets! (201 Created)', () => true);",
-                  "  console.log('Alice WON — booked', json.quantity, 'tickets');",
-                  "} else {",
-                  "  pm.test('❌ Alice was rejected (' + pm.response.code + ')', () => {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([201, 422]);",
-                  "  });",
-                  "  console.log('Alice LOST —', json.error);",
-                  "}"
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('step2_booking_id', json.id);",
+                  "console.log('✅ ส่งคำขอจองแล้ว (202) — รอรันคิวหลังบ้านเพื่อทำ STEP 3');"
                 ],
                 "type": "text/javascript"
               }
@@ -344,52 +651,317 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"email\": \"inventory-test@example.com\",\n    \"quantity\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/bookings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{event_id}}",
+                "bookings"
+              ]
+            },
+            "description": "จองตั๋ว 1 ใบ"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 2,\n  \"event_id\": 3,\n  \"email\": \"inventory-test@example.com\",\n  \"quantity\": 1,\n  \"created_at\": \"2026-07-21T06:55:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[STEP 2.5] GET booking status — ยืนยันสถานะการประมวลผลสำเร็จ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('สถานะกลายเป็น success', () => {",
+                  "  pm.expect(json.status).to.equal('success');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/bookings/{{step2_booking_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{event_id}}",
+                "bookings",
+                "{{step2_booking_id}}"
+              ]
+            },
+            "description": "ยิงเพื่อยืนยันว่า Sidekiq ทำงานเรียบร้อย เปลี่ยนสถานะเป็น success ก่อนจะไปรันตรวจสอบ available_tickets ลดลงต่อใน STEP 3"
+          }
+        },
+        {
+          "name": "[STEP 3] GET /events — ยืนยัน available_tickets ลดลง 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const events = pm.response.json();",
+                  "const eventId = parseInt(pm.collectionVariables.get('event_id'));",
+                  "const ticketsBefore = parseInt(pm.collectionVariables.get('tickets_before_booking'));",
+                  "const targetEvent = events.find(e => e.id === eventId);",
+                  "",
+                  "if (targetEvent) {",
+                  "  const ticketsAfter = targetEvent.available_tickets;",
+                  "  const diff = ticketsBefore - ticketsAfter;",
+                  "",
+                  "  console.log('📊 ก่อนจอง:', ticketsBefore, '| หลังจอง:', ticketsAfter, '| ลดลง:', diff);",
+                  "",
+                  "  pm.test('✅ available_tickets ลดลงหลังจอง (Inventory tracking ทำงานถูกต้อง)', () => {",
+                  "    pm.expect(ticketsAfter).to.be.below(ticketsBefore);",
+                  "  });",
+                  "",
+                  "  pm.test('✅ available_tickets ลดลงตรงตามจำนวนที่จอง (1 ใบ)', () => {",
+                  "    pm.expect(diff).to.equal(1);",
+                  "  });",
+                  "} else {",
+                  "  console.warn('⚠️ ไม่พบ event — รัน Folder 1 ก่อน');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events"
+              ]
+            },
+            "description": "ตรวจสอบว่า available_tickets ลดลงหลังจากจองตั๋ว"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Concurrency — ทดสอบป้องกัน Overbooking",
+      "description": "## ทดสอบป้องกัน Overbooking เมื่อจองพร้อมกัน\n\nเมื่อ Alice และ Bob จองตั๋วใบสุดท้ายพร้อมกัน ระบบต้องให้ตั๋วแค่คนเดียวเท่านั้น\n\n---\n\n### ⚡ วิธีที่แนะนำ — ใช้คำสั่ง Docker (รองรับทุก OS)\n\nการใช้เมาส์คลิก Send สองปุ่มพร้อมกันด้วยมือไม่สามารถพร้อมกันได้จริง\nแนะนำให้ใช้คำสั่งนี้รันบน Terminal ของคุณ ซึ่งจะสั่งจองพร้อมกันเสี้ยววินาที:\n\n```bash\ndocker compose exec web ruby scripts/test_concurrency.rb\n```\n\nเมื่อรันเสร็จแล้ว จะแสดงผลทันทีว่าใครได้ตั๋วและใครถูกปฏิเสธ\n\n---\n\n### หรือทดสอบผ่าน Postman (สังเกตผลทีละคำขอ)\n\n**STEP 1** — GET /events เพื่อหา event และบันทึก `race_event_id`\n**STEP 2** — รันคำขอจองของ Alice ก่อน (ได้ 201) แล้วตามด้วย Bob ทันที (ได้ 422 — ตั๋วหมด)\n**STEP 3** — ยืนยันว่า available_tickets เหลือ 0 พอดี\n\n---\n\n### หลักการทำงาน: Pessimistic Locking\nระบบใช้ `event.with_lock` เพื่อทำ `SELECT ... FOR UPDATE` บนฐานข้อมูล PostgreSQL\n- คนแรกจองสำเร็จ → ถือครอง Lock ตั๋ว\n- คนที่สองเข้ามาพร้อมกัน → รอคิวล็อก → พอได้คิวระบบพบว่าตั๋วหมด → ปฏิเสธการจอง",
+      "item": [
+        {
+          "name": "[STEP 1] GET /events — หา event สำหรับทดสอบ Race Condition",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const events = pm.response.json();",
+                  "const available = events.filter(e => e.available_tickets > 0);",
+                  "",
+                  "if (available.length > 0) {",
+                  "  const smallest = available.reduce((min, e) => e.available_tickets < min.available_tickets ? e : min);",
+                  "  pm.collectionVariables.set('race_event_id', smallest.id);",
+                  "",
+                  "  console.log('🎯 Event ที่เลือกสำหรับทดสอบ:');",
+                  "  console.log('   Name:', smallest.name);",
+                  "  console.log('   ID:', smallest.id);",
+                  "  console.log('   Available tickets:', smallest.available_tickets);",
+                  "  console.log('');",
+                  "  console.log('👉 ขั้นตอนต่อไป: เปิด STEP 2 (Alice) และ STEP 2 (Bob) แล้วกด Send พร้อมกัน');",
+                  "",
+                  "  pm.test('Event มีตั๋วเหลืออยู่พร้อมทดสอบ', () => {",
+                  "    pm.expect(smallest.available_tickets).to.be.above(0);",
+                  "  });",
+                  "} else {",
+                  "  console.error('❌ ไม่มี event ที่ตั๋วว่าง — รัน docker compose down -v && docker compose up --build เพื่อเริ่มใหม่');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events"
+              ]
+            },
+            "description": "ดึง event ที่ตั๋วว่าง"
+          }
+        },
+        {
+          "name": "[STEP 2] Alice จองตั๋วทั้งหมด — เปิดคู่กับ Bob แล้วกด Send พร้อมกัน",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const raceId = pm.collectionVariables.get('race_event_id');",
+                  "if (!raceId) {",
+                  "  console.error('❌ ยังไม่ได้รัน STEP 1!');",
+                  "} else {",
+                  "  console.log('🏃 Alice กำลังจอง event ID:', raceId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Alice ส่งคำขอเข้าคิวสำเร็จ (202 Accepted)', () => pm.response.to.have.status(202));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('alice_booking_id', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"booking\": {\n    \"email\": \"alice@example.com\",\n    \"quantity\": 50\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/events/{{race_event_id}}/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["events", "{{race_event_id}}", "bookings"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{race_event_id}}",
+                "bookings"
+              ]
             },
-            "description": "Alice พยายามจองตั๋ว 50 ใบ (ทั้งหมดที่มี)\n\n**เปิด Tab นี้คู่กับ Bob แล้วกด Send พร้อมกัน!**"
+            "description": "Alice พยายามจองตั๋วที่เหลือทั้งหมด"
           },
           "response": [
             {
-              "name": "201 — Alice wins",
+              "name": "201 — Alice ชนะ",
               "status": "Created",
               "code": 201,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
               "body": "{\n  \"id\": 10,\n  \"event_id\": 3,\n  \"email\": \"alice@example.com\",\n  \"quantity\": 50,\n  \"created_at\": \"2024-07-21T10:00:00Z\"\n}"
             },
             {
-              "name": "422 — Alice loses (Bob was faster)",
+              "name": "422 — Alice แพ้ (Bob เร็วกว่า) — คาดหมายไว้กรณีแย่งกัน",
               "status": "Unprocessable Entity",
               "code": 422,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
               "body": "{\n  \"error\": \"This event is sold out.\"\n}"
             }
           ]
         },
         {
-          "name": "[STEP 2] Bob books ALL remaining tickets (Race vs Alice)",
+          "name": "[STEP 2] Bob จองตั๋วทั้งหมด — เปิดคู่กับ Alice แล้วกด Send พร้อมกัน",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "exec": [
-                  "const raceId = pm.collectionVariables.get('race_event_id') || pm.collectionVariables.get('event_id');",
-                  "pm.variables.set('current_race_event_id', raceId);",
-                  "console.log('🏃 Bob is booking event ID:', raceId);"
+                  "const raceId = pm.collectionVariables.get('race_event_id');",
+                  "if (!raceId) {",
+                  "  console.error('❌ ยังไม่ได้รัน STEP 1!');",
+                  "} else {",
+                  "  console.log('🏃 Bob กำลังจอง event ID:', raceId);",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -398,17 +970,9 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test('Bob ส่งคำขอเข้าคิวสำเร็จ (202 Accepted)', () => pm.response.to.have.status(202));",
                   "const json = pm.response.json();",
-                  "",
-                  "if (pm.response.code === 201) {",
-                  "  pm.test('✅ Bob got the tickets! (201 Created)', () => true);",
-                  "  console.log('Bob WON — booked', json.quantity, 'tickets');",
-                  "} else {",
-                  "  pm.test('❌ Bob was rejected — pessimistic lock protected the event (' + pm.response.code + ')', () => {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([201, 422]);",
-                  "  });",
-                  "  console.log('Bob LOST —', json.error);",
-                  "}"
+                  "pm.collectionVariables.set('bob_booking_id', json.id);"
                 ],
                 "type": "text/javascript"
               }
@@ -417,60 +981,100 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"booking\": {\n    \"email\": \"bob@example.com\",\n    \"quantity\": 50\n  }\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/events/{{race_event_id}}/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["events", "{{race_event_id}}", "bookings"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "{{race_event_id}}",
+                "bookings"
+              ]
             },
-            "description": "Bob พยายามจองตั๋ว 50 ใบพร้อมกับ Alice\n\n**เปิด Tab นี้คู่กับ Alice แล้วกด Send พร้อมกัน!**\n\nเนื่องจาก `with_lock` (pessimistic locking) คนหนึ่งจะได้ 201 อีกคนจะได้ 422 เสมอ — ไม่มี double booking"
+            "description": "Bob พยายามจองตั๋วที่เหลือทั้งหมดพร้อมกับ Alice"
           },
           "response": [
             {
-              "name": "201 — Bob wins",
+              "name": "201 — Bob ชนะ",
               "status": "Created",
               "code": 201,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
               "body": "{\n  \"id\": 11,\n  \"event_id\": 3,\n  \"email\": \"bob@example.com\",\n  \"quantity\": 50,\n  \"created_at\": \"2024-07-21T10:00:00Z\"\n}"
             },
             {
-              "name": "422 — Bob loses (Alice was faster)",
+              "name": "422 — Bob แพ้ (Alice เร็วกว่า) — คาดหมายไว้กรณีแย่งกัน",
               "status": "Unprocessable Entity",
               "code": 422,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
               "cookie": [],
               "body": "{\n  \"error\": \"This event is sold out.\"\n}"
             }
           ]
         },
         {
-          "name": "[STEP 3] Verify — Only 1 booking should exist",
+          "name": "[STEP 3] ยืนยันผล — available_tickets ต้องเป็น 0 (ไม่ติดลบ)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
                   "",
                   "const events = pm.response.json();",
                   "const raceId = parseInt(pm.collectionVariables.get('race_event_id'));",
                   "const raceEvent = events.find(e => e.id === raceId);",
                   "",
                   "if (raceEvent) {",
-                  "  console.log('After race — available_tickets:', raceEvent.available_tickets);",
-                  "  pm.test('🔒 Pessimistic lock worked — event is now sold out (0 available)', () => {",
-                  "    pm.expect(raceEvent.available_tickets).to.eq(0);",
+                  "  const tickets = raceEvent.available_tickets;",
+                  "  console.log('📊 available_tickets หลังทดสอบ Race Condition:', tickets);",
+                  "",
+                  "  pm.test('🔒 available_tickets เท่ากับ 0 (ไม่มี Overbooking)', () => {",
+                  "    pm.expect(tickets).to.equal(0);",
                   "  });",
+                  "",
+                  "  pm.test('🔒 available_tickets ไม่ติดลบ (ข้อมูลยังถูกต้องสมบูรณ์)', () => {",
+                  "    pm.expect(tickets).to.be.at.least(0);",
+                  "  });",
+                  "",
+                  "  if (tickets === 0) {",
+                  "    console.log('✅ Pessimistic Lock ทำงานถูกต้อง — ไม่เกิด Overbooking');",
+                  "  } else if (tickets < 0) {",
+                  "    console.error('❌ OVERBOOKING เกิดขึ้น! available_tickets =', tickets);",
+                  "  }",
+                  "} else {",
+                  "  console.warn('⚠️ ไม่พบ event — รัน Setup ก่อน');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -479,13 +1083,22 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/events",
-              "host": ["{{base_url}}"],
-              "path": ["events"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events"
+              ]
             },
-            "description": "ตรวจสอบหลัง race — available_tickets ต้องเป็น 0 (ไม่ใช่ -50 หรือ -100)"
+            "description": "ยืนยันผลลัพธ์ว่าจำนวนตั๋วเหลือ 0 และไม่ติดลบ"
           }
         }
       ]

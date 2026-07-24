@@ -100,7 +100,7 @@ curl -X POST http://localhost:3000/events/1/bookings \
 
 ---
 
-### 3) POST /events/:event_id/bookings (กรณีตั๋วไม่พอ / Error Handling)
+### 3) POST /events/:event_id/bookings (กรณีตั๋วไม่พอ)
 ```bash
 curl -X POST http://localhost:3000/events/1/bookings \
   -H "Content-Type: application/json" \
@@ -114,11 +114,70 @@ curl -X POST http://localhost:3000/events/1/bookings \
 **Response (422 Unprocessable Entity)**:
 ```json
 {
-  "error": "Not enough tickets available. Remaining tickets: 98"
+  "error": "Only 100 ticket(s) remaining; you requested 9999."
 }
 ```
 
-> **Note**: หากกรณี `curl` สั่งไปที่ `:event_id` ที่ไม่มีในระบบ (เช่น ยิงไปที่ id 1 แต่ใน DB เริ่มที่ id 4) API จะคืนค่า `422 Unprocessable Entity` พร้อมข้อความ `{"error": "Event does not exist"}`
+---
+
+### 4) POST /events/:event_id/bookings (กรณี Email ผิดรูปแบบ หรือข้อมูลไม่ครบ)
+```bash
+curl -X POST http://localhost:3000/events/1/bookings \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "email": "invalid-email-format",
+    "quantity": 1
+  }'
+```
+
+**Response (422 Unprocessable Entity)**:
+```json
+{
+  "error": "Email is invalid"
+}
+```
+
+---
+
+### 5) POST /events/:event_id/bookings (กรณีระบุจำนวนตั๋วไม่ถูกต้อง)
+```bash
+curl -X POST http://localhost:3000/events/1/bookings \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "quantity": 0
+  }'
+```
+
+**Response (422 Unprocessable Entity)**:
+```json
+{
+  "error": "Quantity must be greater than 0"
+}
+```
+
+---
+
+### 6) POST /events/:event_id/bookings (กรณีไม่มี Event ในระบบ)
+```bash
+# สมมติว่าต้องการจอง Event ID 999 ที่ไม่มีอยู่จริง
+curl -X POST http://localhost:3000/events/999/bookings \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "quantity": 1
+  }'
+```
+
+**Response (404 Not Found)**:
+```json
+{
+  "error": "Event does not exist"
+}
+```
 
 ---
 
